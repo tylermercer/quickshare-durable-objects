@@ -1,5 +1,6 @@
 {
   "name": "quickshare",
+  "main": "dist/_worker.js/index.js",
   "assets": {
     "directory": "./dist"
   },
