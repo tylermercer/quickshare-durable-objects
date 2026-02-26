@@ -7,7 +7,17 @@ import rawFonts from './lib/plugins/vite/rawFonts.js';
 
 // https://astro.build/config
 export default defineConfig({
-  adapter: cloudflare({ mode: 'directory' }),
+  output: 'server',
+  adapter: cloudflare({
+    mode: 'directory',
+    workerEntryPoint: {
+      path: 'src/worker-entry.ts',
+      namedExports: ['SignalingServer']
+    },
+    platformProxy: {
+      enabled: true,
+    }
+  }),
   markdown: {
     remarkPlugins: [remarkEmdash],
   },

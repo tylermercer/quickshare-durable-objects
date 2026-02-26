@@ -25,3 +25,7 @@ pnpm-debug.log*
 
 # cache folder
 .cache/
+
+# wrangler
+.wrangler/
+worker-configuration.d.ts
