@@ -1,9 +1,9 @@
 {
-  "name": "astroflare",
+  "name": "quickshare",
   "assets": {
     "directory": "./dist"
   },
-  "compatibility_date": "2024-12-04",
+  "compatibility_date": "2026-02-25",
   "limits": {
     "cpu_ms": 150
   }
