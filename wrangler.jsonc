@@ -8,9 +8,6 @@
   "compatibility_flags": [
     "nodejs_compat"
   ],
-  "limits": {
-    "cpu_ms": 150
-  },
   "durable_objects": {
     "bindings": [
       {
