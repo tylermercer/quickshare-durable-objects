@@ -1,0 +1,10 @@
+{
+  "name": "astroflare",
+  "assets": {
+    "directory": "./dist"
+  },
+  "compatibility_date": "2024-12-04",
+  "limits": {
+    "cpu_ms": 150
+  }
+}
