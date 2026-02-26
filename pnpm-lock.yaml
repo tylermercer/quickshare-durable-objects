@@ -9,13 +9,13 @@ importers:
   .:
     dependencies:
       '@astrojs/cloudflare':
-        specifier: ^12.6.7
+        specifier: 12.6.12
         version: 12.6.12(astro@5.18.0(rollup@4.59.0)(sass@1.97.3)(typescript@5.9.3))(sass@1.97.3)
       '@radix-ui/colors':
         specifier: ^3.0.0
         version: 3.0.0
       astro:
-        specifier: ^5.13.5
+        specifier: 5.18.0
         version: 5.18.0(rollup@4.59.0)(sass@1.97.3)(typescript@5.9.3)
       bezier-easing:
         specifier: ^2.1.0
