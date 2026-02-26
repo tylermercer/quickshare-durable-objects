@@ -6,5 +6,21 @@
   "compatibility_date": "2026-02-25",
   "limits": {
     "cpu_ms": 150
-  }
+  },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "SIGNALING_SERVER",
+        "class_name": "SignalingServer"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_classes": [
+        "SignalingServer"
+      ]
+    }
+  ]
 }
