@@ -135,14 +135,19 @@ class QuickshareApp {
     private ws: WebSocket | null = null;
     private peers: Map<string, Peer> = new Map();
     private connections: Map<string, PeerConnection> = new Map();
+    private roomId: string | null = null;
 
     constructor() {
         this.connect();
+        this.setupModal();
     }
 
     private connect() {
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        this.ws = new WebSocket(`${protocol}//${window.location.host}/api/signaling`);
+        const urlParams = new URLSearchParams(window.location.search);
+        const roomParam = urlParams.get('room');
+        const wsUrl = `${protocol}//${window.location.host}/api/signaling${roomParam ? `?room=${encodeURIComponent(roomParam)}` : ''}`;
+        this.ws = new WebSocket(wsUrl);
         this.ws.onmessage = (e) => this.handleMessage(JSON.parse(e.data));
         this.ws.onclose = () => setTimeout(() => this.connect(), 3000);
     }
@@ -152,6 +157,10 @@ class QuickshareApp {
             case 'welcome':
                 const myNameEl = document.getElementById('my-name');
                 if (myNameEl) myNameEl.textContent = `You are: ${data.name}`;
+                if (data.roomId) {
+                    this.roomId = data.roomId;
+                    this.updateShareUrl();
+                }
                 data.peers.forEach((p: Peer) => this.addPeer(p));
                 break;
             case 'peer-joined':
@@ -164,6 +173,52 @@ class QuickshareApp {
                 this.getOrCreateConnection(data.from).handleSignal(data.signal);
                 break;
         }
+    }
+
+    private updateShareUrl() {
+        if (!this.roomId) return;
+        const shareUrl = `${window.location.origin}${window.location.pathname}?room=${encodeURIComponent(this.roomId)}`;
+        const qrElem = document.getElementById('qr-code-element') as HTMLElement & { contents?: string };
+        if (qrElem) {
+            qrElem.setAttribute('contents', shareUrl);
+            qrElem.contents = shareUrl;
+        }
+    }
+
+    private setupModal() {
+        const modal = document.getElementById('qr-modal');
+        const shareBtn = document.getElementById('share-qr-btn');
+        const closeBtn = document.getElementById('modal-close-btn');
+        const copyBtn = document.getElementById('copy-link-btn');
+
+        shareBtn?.addEventListener('click', () => {
+            modal?.classList.add('open');
+        });
+
+        closeBtn?.addEventListener('click', () => {
+            modal?.classList.remove('open');
+        });
+
+        modal?.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.classList.remove('open');
+            }
+        });
+
+        copyBtn?.addEventListener('click', async () => {
+            if (!this.roomId) return;
+            const shareUrl = `${window.location.origin}${window.location.pathname}?room=${encodeURIComponent(this.roomId)}`;
+            try {
+                await navigator.clipboard.writeText(shareUrl);
+                const origText = copyBtn.textContent;
+                copyBtn.textContent = 'Copied!';
+                setTimeout(() => {
+                    if (copyBtn) copyBtn.textContent = origText;
+                }, 2000);
+            } catch (err) {
+                console.error('Failed to copy link:', err);
+            }
+        });
     }
 
     private addPeer(peer: Peer) {
