@@ -13,8 +13,11 @@ export class SignalingServer extends DurableObject {
       return new Response("Expected Upgrade: websocket", { status: 426 });
     }
 
+    const url = new URL(request.url);
+    const roomId = url.searchParams.get("roomId") || "default";
+
     const [client, server] = new WebSocketPair();
-    await this.handleSession(server);
+    await this.handleSession(server, roomId);
 
     return new Response(null, {
       status: 101,
@@ -22,7 +25,7 @@ export class SignalingServer extends DurableObject {
     });
   }
 
-  async handleSession(ws: WebSocket) {
+  async handleSession(ws: WebSocket, roomId: string) {
     // @ts-ignore
     ws.accept();
 
@@ -47,6 +50,7 @@ export class SignalingServer extends DurableObject {
       type: "welcome",
       id,
       name,
+      roomId,
       peers,
     }));
 
