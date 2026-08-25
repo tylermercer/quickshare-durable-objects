@@ -1,7 +1,8 @@
 import { DurableObject } from "cloudflare:workers";
 
 export class SignalingServer extends DurableObject {
-  sessions: Map<WebSocket, { id: string; name: string }> = new Map();
+  sessions: Map<WebSocket, { id: string; name: string; lastSeen: number }> = new Map();
+  private checkIntervalTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor(ctx: DurableObjectState, env: any) {
     super(ctx, env);
@@ -32,8 +33,9 @@ export class SignalingServer extends DurableObject {
     const id = crypto.randomUUID();
     const name = this.generateName();
 
-    const session = { id, name };
+    const session = { id, name, lastSeen: Date.now() };
     this.sessions.set(ws, session);
+    this.startCheckInterval();
 
     // Notify others in the same group
     this.broadcast({
@@ -56,6 +58,10 @@ export class SignalingServer extends DurableObject {
 
     ws.addEventListener("message", async (msg) => {
       try {
+        const currentSession = this.sessions.get(ws);
+        if (currentSession) {
+          currentSession.lastSeen = Date.now();
+        }
         const data = JSON.parse(msg.data as string);
         this.handleMessage(ws, data);
       } catch (e) {
@@ -64,11 +70,16 @@ export class SignalingServer extends DurableObject {
     });
 
     ws.addEventListener("close", () => {
-      this.sessions.delete(ws);
-      this.broadcast({
-        type: "peer-left",
-        id,
-      });
+      if (this.sessions.has(ws)) {
+        this.sessions.delete(ws);
+        this.broadcast({
+          type: "peer-left",
+          id,
+        });
+      }
+      if (this.sessions.size === 0) {
+        this.stopCheckInterval();
+      }
     });
   }
 
@@ -77,6 +88,13 @@ export class SignalingServer extends DurableObject {
     if (!session) return;
 
     switch (data.type) {
+      case "ping":
+        try {
+          ws.send(JSON.stringify({ type: "pong" }));
+        } catch (e) {
+          // ignore send error
+        }
+        break;
       case "signal":
         this.sendToPeer(data.to, {
           type: "signal",
@@ -84,6 +102,43 @@ export class SignalingServer extends DurableObject {
           signal: data.signal,
         });
         break;
+    }
+  }
+
+  startCheckInterval() {
+    if (!this.checkIntervalTimer) {
+      this.checkIntervalTimer = setInterval(() => {
+        this.checkDeadSessions();
+      }, 1000);
+    }
+  }
+
+  stopCheckInterval() {
+    if (this.checkIntervalTimer !== null) {
+      clearInterval(this.checkIntervalTimer);
+      this.checkIntervalTimer = null;
+    }
+  }
+
+  checkDeadSessions() {
+    const now = Date.now();
+    const TIMEOUT = 10000; // 10 seconds
+    for (const [ws, session] of Array.from(this.sessions.entries())) {
+      if (now - session.lastSeen > TIMEOUT) {
+        this.sessions.delete(ws);
+        try {
+          ws.close();
+        } catch (e) {
+          // ignore
+        }
+        this.broadcast({
+          type: "peer-left",
+          id: session.id,
+        });
+      }
+    }
+    if (this.sessions.size === 0) {
+      this.stopCheckInterval();
     }
   }
 

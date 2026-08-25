@@ -136,6 +136,7 @@ class QuickshareApp {
     private peers: Map<string, Peer> = new Map();
     private connections: Map<string, PeerConnection> = new Map();
     private roomId: string | null = null;
+    private pingTimer: ReturnType<typeof setInterval> | null = null;
 
     constructor() {
         this.connect();
@@ -143,17 +144,43 @@ class QuickshareApp {
     }
 
     private connect() {
+        this.stopPingTimer();
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const urlParams = new URLSearchParams(window.location.search);
         const roomParam = urlParams.get('room');
         const wsUrl = `${protocol}//${window.location.host}/api/signaling${roomParam ? `?room=${encodeURIComponent(roomParam)}` : ''}`;
         this.ws = new WebSocket(wsUrl);
+        this.ws.onopen = () => this.startPingTimer();
         this.ws.onmessage = (e) => this.handleMessage(JSON.parse(e.data));
-        this.ws.onclose = () => setTimeout(() => this.connect(), 3000);
+        this.ws.onclose = () => {
+            this.stopPingTimer();
+            setTimeout(() => this.connect(), 3000);
+        };
+        this.ws.onerror = () => {
+            this.stopPingTimer();
+        };
+    }
+
+    private startPingTimer() {
+        this.stopPingTimer();
+        this.pingTimer = setInterval(() => {
+            if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                this.ws.send(JSON.stringify({ type: 'ping' }));
+            }
+        }, 3000);
+    }
+
+    private stopPingTimer() {
+        if (this.pingTimer !== null) {
+            clearInterval(this.pingTimer);
+            this.pingTimer = null;
+        }
     }
 
     private handleMessage(data: any) {
         switch (data.type) {
+            case 'pong':
+                break;
             case 'welcome':
                 const myNameEl = document.getElementById('my-name');
                 if (myNameEl) myNameEl.textContent = `You are: ${data.name}`;
